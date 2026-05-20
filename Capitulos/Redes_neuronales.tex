@@ -1,0 +1,160 @@
+\chapter{Redes Neuronales}
+\label{cap:Redes Neuronales}
+
+Este capítulo tiene como objetivo establecer los cimientos 
+técnicos y la notación que guiarán el resto del trabajo. 
+Comenzaremos formalizando la notación básica de las 
+\textbf{redes neuronales}, desde sus estructuras más simples 
+hasta las arquitecturas profundas, para comprender cómo los 
+datos se transforman. Posteriormente, definiremos varias funciones
+que nos permitirán entender la arquitectura del transformador en
+los siguientes capítulos.
+\section{Redes Neuronales}
+
+Consideremos una red neuronal que mapea un vector de entrada
+$\mathbf{x} \in \mathbb{R}^{D_i}$  %%vector de entrada
+ a un vector de salida 
+$\mathbf{y} \in \mathbb{R}^{D_o}$, 
+expresada como 
+$ \y = f[\x,\phi]$, 
+donde $\phi$ representa el conjunto de parámetros del modelo. 
+La arquitectura se define por la presencia de $K$ capas ocultas, 
+cada una de ellas con una dimensionalidad $D_k$ para 
+$k = 1,\dots, K$ 
+que representa el número de unidades ocultas o neuronas\footnote{ Para evitar confusiones, cabe señalar que los 
+subíndices $i$ y $o$ en las variables $D_i$ y $D_o$ provienen de 
+los términos en inglés 
+\textit{input} y \textit{ouput}, haciendo referencia a la 
+dimensión de entrada y dimensión de salida, respectivamente.}.
+
+Los elementos que componen la red son:
+\begin{itemize}
+    \item \textbf{Vectores de activación}: $\mathbf{h}_k \in D_k$ representa el estado de las unidades ocultas en la capa $k$.
+
+    \item \textbf{Matrices de peso}: $\boldsymbol{\Omega}_k$ describe la transformación lineal entre la capa $k$ y $k+1$.
+
+    \item \textbf{Vectores de sesgo (\textit{bias})}: $\boldsymbol{\beta}_k$ representa el término de compensación de cada capa.
+
+    \item  \textbf{Función de activación}: $a[\cdot]$ es una funcion no lineal aplicada elemento a elemento.
+\end{itemize}
+
+
+El flujo propagación de la información a través de la red se 
+define mediante la siguiente secuencia de transformaciones:
+$$\begin{aligned}
+    \mathbf{h}_1 &= a[\boldsymbol{\beta}_0 + \boldsymbol{\Omega}_0 \mathbf{x}] \\
+    \mathbf{h}_2 &= a[\boldsymbol{\beta}_1 + \boldsymbol{\Omega}_1 \mathbf{h}_1] \\
+    &\vdots \\
+    \mathbf{h}_K &= a[\boldsymbol{\beta}_{K-1} + \boldsymbol{\Omega}_{K-1} \mathbf{h}_{K-1}] \\
+    \mathbf{y} &= \boldsymbol{\beta}_K + \boldsymbol{\Omega}_K \mathbf{h}_K
+\end{aligned}$$
+En la capa $k$-ésima el vector de sesgo $\boldsymbol{\beta}_{k}$ 
+tiene dimensión $D_k$ para   \mbox{$k = 1 ,\dots, K-1$,} 
+mientras que $\boldsymbol{\beta}_{K}$ tiene dimensión $D_o$. 
+La primera matriz de pesos $\boldsymbol{\Omega}_0$ tiene dimensión 
+$D_1 \times D_i$ y la última matriz de pesos tiene dimensión $D_o \times D_K$, 
+mientras que en el resto de capas intermedias la matriz de pesos 
+$\boldsymbol{\Omega}_k$
+tiene dimensión $D_{k+1} \times D_k$ (ver figura \ref{fig:red_neuronal}).
+
+%FIGURA RED NEURONAL
+\begin{figure}[t]
+    \vspace{0.8cm}
+    \centering
+    \resizebox{\textwidth}{!}{%
+        \input{Figuras/red_neuronal_ejemplo} % inserta el dibujo
+    }
+    \caption{Notación para una red con una entrada $\mathbf{x}$ de dimensión $D_i = 3$, 
+    una salida $\mathbf{y}$ de dimensión $D_o = 2$ y $K =3$ capas 
+    ocultas $ \mathbf{h}_1$, $ \mathbf{h}_2$ y $ \mathbf{h}_3$ de 
+    dimensiones $D_1 = 4$, $D_2 = 2$ y $D_3 = 3$ respectivamente.
+    Los pesos se almacenan en las matrices $\boldsymbol{\Omega}_k$ que multiplican las 
+    activaciones de la capa precedente para generar las pre-activaciones de la siguiente 
+    capa. Por ejemplo, la matriz de pesos $\boldsymbol{\Omega}_1$ que computa las 
+    pre-activaciones en $\mathbf{h}_2$ a partir de las de $\mathbf{h}_1$ tiene 
+    dimensión $2 \times 4$. Esta matriz se aplica a las 4 unidades ocultas de la 
+    primera capa y genera las entradas para las 2 unidades de la siguiente. 
+    Los sesgos se almacenan en los vectores $\boldsymbol{\beta}_{k}$ y tienen la 
+    dimensión de la capa que alimentan.}
+    \label{fig:red_neuronal}
+\end{figure}
+
+Cuando hablamos de aprendizaje o entrenamiento de un modelo, nos referimos al intento 
+de encontrar los parámetros $\phi$ óptimos que permitan realizar predicciones de salida 
+precisas y coherentes a partir de los datos de entrada. 
+Para aprender estos parámetros, se utiliza un 
+conjunto de datos de entrenamiento compuesto por pares de 
+ejemplos de entrada y salida $ \{(\mathbf{x}_n, \mathbf{y}_n)\}$. 
+Nuestro objetivo es seleccionar aquellos parámetros que mapeen cada entrada de 
+entrenamiento a su salida asociada de la forma más precisa posible. 
+Para cuantificar el error introducimos la función de pérdida 
+$L[\phi]$\footnote{No existe una única función de péridida $L[\phi]$ sino que se define 
+según el problema a resolver.}. 
+En consecuencia, al entrenar el modelo buscamos el conjunto de parámetros 
+$\hat{\phi}$ que minimicen dicha función de pérdida, es decir:
+\begin{equation}
+    \hat{\phi} = \arg\min_{\phi} \Big[ L[\phi] \Big]
+\end{equation}
+El operador $\arg \min$ nos indica que el resultado del problema de 
+optimización no es el valor mínimo de la pérdida, sino el argumento $\phi$ 
+con el cual se alcanza dicho valor mínimo. 
+
+
+
+\section{Sotfmax}
+
+La función Sotfmax es una generalización de la función logística.
+Dado un vector $\x^T = (\x_1, \dots, \x_n)$, la función Sotfmax $\sigma: \mathbb{R}^n \to (0,1)^n$ se define por componentes como:
+\begin{equation}
+    \sigma[\x]_i = \frac{e^{\x_i}}{\sum_{j=1}^{n} e^{\x_j}} \quad \text{para } i = 1, \dots, n
+\end{equation}
+y garantiza que  $\sum_{i=1}^n \sigma[\x]_i = 1$.
+
+Por lo general, y en el campo de la informática, la función Sotfmax también se aplica a matrices $\mathbf{X}  \in \mathbb{R}^{N\times M}$. En este contexto, la función se aplica por filas, donde para cada elemento de la matriz se define como:
+\begin{equation}
+    \sigma[\mathbf{X}]_{i,j} = \frac{e^{\mathbf{X}_{i,j}}}{\sum_{k=1}^{M} e^{\mathbf{X}_{i,k}}}
+\end{equation}
+
+
+\section{Normalización de Capa (\textit{LayerNorm})}
+Dado un vector $\mathbf{x}^T = (\x_1, \dots, \x_n) \in \mathbb{R}^n$, la función $\text{LayerNorm}: \mathbb{R}^n \to \mathbb{R}^n$ se define como:
+\begin{equation}
+\text{LayerNorm}[\mathbf{x}] = \boldsymbol{\gamma} \odot \frac{\mathbf{x} - \mu \mathbf{1}}{\sqrt{\sigma^2 + \epsilon}} + \boldsymbol{\beta}
+\end{equation}
+donde $\mathbf{1} \in \mathbb{R}^n$ es el vector de unos, $\epsilon > 0$, $\odot$ 
+denota el producto de Hadamard (multiplicación componente a componente), y 
+$\boldsymbol{\gamma}, \boldsymbol{\beta} \in \mathbb{R}^n$ son vectores de parámetros 
+aprendibles. Además:
+\begin{equation}\mu = \frac{1}{n} \sum_{j=1}^n \x_j \quad \text{y} \quad \sigma^2 = \frac{1}{n} \sum_{j=1}^n (\x_j - \mu)^2
+\end{equation}
+La normalización de capa es un operador fundamental diseñado para 
+garantizar la estabilidad numérica de los datos a medida que atraviesan las múltiples 
+capas de una red neuronal pues, en arquitecturas muy profundas, las multiplicaciones matriciales sucesivas pueden provocar que los valores de los vectores crezcan descontroladamente o tiendan a cero. La función LayerNorm mitiga este problema forzando que cada vector adquiera una media de cero y una varianza unitaria. Además, una de sus principales diferencias respecto a otras técnicas tradicionales basadas en lotes (\textit{batches}), como \textit{Batch Normalization}, es que se aplica de manera independiente sobre cada \textit{token}. Sin embargo, estandarizar estrictamente los datos podría limitar la capacidad expresiva de la red neuronal por lo que, para evitar esta pérdida de flexibilidad, se introducen parámetros que permiten reescalar y desplazar los valores si, durante el entrenamiento, el modelo descubre que una distribución diferente es más óptima para representar la información.
+
+
+
+
+
+
+
+
+
+
+ 
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

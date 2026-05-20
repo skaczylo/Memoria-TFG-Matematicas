@@ -1,0 +1,49 @@
+# Archivos auxiliares de LaTeX
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.idx
+*.ilg
+*.ind
+*.log
+*.out
+*.synctex.gz
+*.toc
+*.lof
+*.lot
+*.lol
+*.nav
+*.snm
+*.vrb
+*.bcf
+*.run.xml
+*.xdv
+*.glg
+*.glo
+*.gls
+*.acn
+*.acr
+*.alg
+*.ist
+*.fot
+*.pyg
+*.ptc
+*.maf
+*.mtc
+*.mtc0
+
+
+
+# Zips
+*.zip
+
+# Archivos de editor
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# Archivos del sistema
+.DS_Store
+Thumbs.db
