@@ -22,12 +22,17 @@ Los vectores o \textit{tokens} $\{\x_n\}$ los agruparemos en una matriz $\mathbf
     \label{fig:matriz_X}
     \vspace{0.8cm}
 \end{figure}
-El Transformador será una función no lineal que mapea la matriz de entrada $\mathbf{X}$ hacia una nueva representación $\mathbf{Y}$ de misma dimensión $N \times D_i$:
+El transformador será una función no lineal que mapea la matriz de 
+entrada $\mathbf{X}$ hacia una nueva representación $\mathbf{Y}$ de la
+misma dimensión $N \times D_i$:
 \begin{equation}
     \mathbf{Y} = \text{Transformador}[\mathbf{X}]
 \end{equation}
-                            
-La salida $\mathbf{Y}$ será  capaz de capturar la relación que tienen los vectores de entrada, gracias a un mecanismo de autoatención. Esto permitirá que cada vector resultante $\y_i^T$ de $\mathbf{Y}$ integre el contexto global de la secuencia, capturando la información relevante de todos los demás elementos.
+La salida $\mathbf{Y}$ será  capaz de capturar la relación que tienen los 
+vectores de entrada gracias a un mecanismo de autoatención. 
+Esto permitirá que cada vector resultante $\y_i^T$ de $\mathbf{Y}$ integre 
+el contexto global de la secuencia, capturando la información relevante de 
+todos los demás elementos.
 
 Supongamos que nuestro conjunto inicial de \textit{tokens} es $\x_1,\x_2, \dots,\x_N$ y queremos convertirlo en  $\y_1,\y_2, \dots,\y_N$, de tal manera que cada uno de los $\y_n$ no solo dependa del vector de entrada $\x_n$ sino también de todos los demás vectores $\x_m$.
 La manera más elegante y sencilla de expresar esta dependencia es mediante una combinación lineal:
@@ -49,33 +54,92 @@ Estos coeficientes $a_{nm}$ tienen como objetivo representar la influencia de lo
 \end{equation}
 
 \section{Coeficientes de atención}
-El objetivo es ahora determinar cómo calcular dichos \textbf{coeficientes de atención}. Iremos de menos a más, comenzando con un modelo sencillo al que, progresivamente, iremos añadiendo complejidad y detalles.
+El objetivo es ahora determinar cómo calcular dichos 
+\textbf{coeficientes de atención}. Iremos de menos a más, comenzando con 
+un modelo sencillo al que, progresivamente, iremos añadiendo complejidad y 
+detalles.
 
-Para ponernos en situación, supongamos un grupo de filósofos sentados alrededor de una mesa redonda debatiendo y colaborando en la creación de una nueva teoría filosófica.Cada filósofo posee una etiqueta que identifica su corriente de pensamiento o especialidad, la cual actúa como \textbf{clave}, y un conocimiento profundo que puede aportar al grupo, que actúa como \textbf{valor}. Cuando un filósofo necesita inspiración o tiene dudas sobre algo formula una pregunta al resto de la mesa, la cual actúa como \textbf{consulta}. De todos los integrantes que hay en la mesa, el filósofo que lanza la pregunta necesita saber a quién debe ``prestar más atención'', es decir, qué compañero tiene la especialidad que mejor encaje con su pregunta. En otras palabras, quiere encontrar a aquel filósofo cuya clave coincida mejor con su consulta. Sin embargo, como buen filósofo, no solo quiere tener en cuenta la respuesta de uno sino la de todos los filósofos en la mesa. Para ello, el filósofo comparará su consulta con todas las claves de sus compañeros e incluso con su propia clave (de donde deriva el término de autoatención) y asignará una distribución de pesos que medirán cuánta atención prestar a cada filósofo. Finalmente, cada filósofo le dará su respuesta, es decir, su valor, y el filósofo que lanza la pregunta considerará y ponderará estas respuestas según los pesos de atención. De esta manera, el filósofo tendrá en cuenta las respuestas de todos los participantes pero a algunos les hará más caso que a otros. Cabe destacar que este proceso es simultáneo, pues cada uno de los integrantes lanzará su propia pregunta al resto de filósofos, actualizando y enriqueciendo su conocimiento al mismo tiempo.
+Para ponernos en situación, supongamos un grupo de filósofos sentados 
+alrededor de una mesa redonda debatiendo y colaborando en la creación de una 
+nueva teoría filosófica. Cada filósofo posee una etiqueta que identifica su 
+corriente de pensamiento o especialidad, la cual actúa como \textbf{clave}, 
+y un conocimiento profundo que puede aportar al grupo, que actúa como 
+\textbf{valor}. Cuando un filósofo necesita inspiración o tiene dudas sobre 
+algo formula una pregunta al resto de la mesa, la cual actúa como 
+\textbf{consulta}. De todos los integrantes que hay en la mesa, el filósofo 
+que lanza la pregunta necesita saber a quién debe ``prestar más atención'', 
+es decir, qué compañero tiene la especialidad que mejor encaje con su 
+pregunta. En otras palabras, quiere encontrar a aquel filósofo cuya clave 
+coincida mejor con su consulta. Sin embargo, como buen filósofo, no solo 
+quiere tener en cuenta la respuesta de uno sino la de todos los filósofos 
+en la mesa. Para ello, el filósofo comparará su consulta con todas las 
+claves de sus compañeros e incluso con su propia clave (de donde deriva el 
+término de autoatención) y asignará una distribución de pesos que medirán 
+cuánta atención prestar a cada filósofo. Finalmente, cada filósofo le dará 
+su respuesta, es decir, su valor, y el filósofo que lanza la pregunta 
+considerará y ponderará estas respuestas según los pesos de atención. De 
+esta manera, el filósofo tendrá en cuenta las respuestas de todos los 
+participantes pero a algunos les hará más caso que a otros. Cabe destacar 
+que este proceso es simultáneo, pues cada uno de los integrantes lanzará su 
+propia pregunta al resto de filósofos, actualizando y enriqueciendo su 
+conocimiento al mismo tiempo.
 
-En una primera aproximación simplificada, y siguiendo la analogía, podemos considerar que cada vector $\x_m$ representa simultáneamente el conocimiento y la especialidad del filósofo $m$. A su vez, usamos un vector específico $\x_n$ para representar la consulta del filósofo $n$. Con todo ello, y dado que la mejor manera de comparar vectores y determinar su grado de similitud es mediante el producto escalar, podríamos definir directamente los coeficientes de atención como:
+En una primera aproximación simplificada, supondremos $N$ filósofos en la mesa.
+Cada uno de ellos será representado mediante un vector $\x_m$.
+Las consultas y las claves serán representados 
+mediante los vectores $\mathbf{q}_m$ y $\mathbf{k}_m$  respectivamante, 
+mientras que el valor
+será el propio filósofo, es decir, el vector $\x_m $
+Dado un filósofo $\x_n$, será necesario comparar su correspondiente consulta
+$\mathbf{q}_n$ con las claves $\mathbf{k}_m$ de
+los filósofos presentes en la mesa. Para realizar la comparación y medir el 
+grado de similitud emplearemos el producto escalar, por lo que podríamos 
+definir, inicialmente, los coeficientes de atención como:
 \begin{equation}
-    a_{nm} = \x_n^{{T}}  \cdot \x_m \qquad \text{(consulta} \cdot \text{clave)} 
+    a_{nm} = \mathbf{q}_n^{{T}}  \cdot \mathbf{k}_m \qquad \text{(consulta} \cdot \text{clave)} 
 \end{equation}
-donde  $\cdot$ denota el producto escalar. Sin embargo, no cumplimos \eqref{atencion_positiva} ni \eqref{atencion_suma_1}, por lo que empleamos la función Softmax sobre el producto escalar y definimos los coeficientes como:
+donde  $\cdot$ denota el producto escalar. 
+Sin embargo, al no cumplir \eqref{atencion_positiva} ni 
+\eqref{atencion_suma_1}, es necesario aplicar la función Softmax 
+sobre el conjunto de productos escalares obtenidos. Se definen entonces los coeficientes de atención 
+como:
 \begin{equation}
-    a_{nm} := \text{Softmax}_m(\x_n^{T}  \cdot \x_m) = \frac{\exp(\mathbf{x}_n^{T} \cdot \mathbf{x}_m)}{\sum_{m'=1}^{N} \exp(\mathbf{x}_n^{{T}} \cdot \mathbf{x}_{m'})} 
-    \qquad n = 1,2,\dots,N
+    a_{nm} := \text{Softmax}_m(\mathbf{q}_n^{T} \mathbf{k}_m) = 
+    \frac{\exp(\mathbf{q}_n^{T} \mathbf{k}_m)}{\sum_{m'=1}^{N} \exp(\mathbf{q}_n^{T} \mathbf{k}_{m'})} 
+    \qquad  m = 1, \dots, N
     \label{softmax_anm_componente}
 \end{equation}
-donde cada uno de estos coeficientes representaría la atención que pone el filósofo $n$, el  que lanza la pregunta, sobre el filósofo $m$, el que puede responder a su pregunta.
+donde cada uno de estos coeficientes representaría la atención que pone 
+el filósofo $\x_n$, el  que realiza la consulta, sobre el filósofo $\x_m$, 
+el que 
+puede responder a su consulta.
 
+Según comentábamos, el proceso es simultáneo y cada vector 
+$\x_n$ de $\mathbf{X}$, mediante \eqref{combinacion_lineal}, genera su 
+propio vector $\y_n$, que, conceptualmente y aplicado a la analogía,
+representa la conclusión a la que llega el filósofo $\x_n$.
 
-Según comentábamos, el proceso es simultáneo y cada vector $\x_n$ de $\mathbf{X}$, mediante \eqref{combinacion_lineal}, genera su propio vector $\y_n$, que, conceptualmente y aplicado a la analogía, representa la conclusión a la que llega el filósofo $n$.
-
-Todas estas ecuaciones, \eqref{combinacion_lineal} y \eqref{softmax_anm_componente}, se pueden expresar matricialmente como :
+Todas estas ecuaciones, \eqref{combinacion_lineal} y 
+\eqref{softmax_anm_componente}, se pueden expresar matricialmente como:
 \begin{equation}
-    \mathbf{Y} = \text{Softmax}[\mathbf{X} \mathbf{X}^T]\mathbf{X}
+    \mathbf{Y} = \text{Softmax}[\mathbf{Q}  \mathbf{K}^T]\mathbf{X}
     \label{eq:softmax_anm_matriz}
 \end{equation}
-donde $\mathbf{Y}$ tiene la  misma dimensión $N\times D_i$ que $\mathbf{X}$ y cuyas filas son los vectores de salida $\y_1^T,\y_2^T,\dots,\y_m^T$. 
+donde $\mathbf{Y}$ tiene la  misma dimensión $N\times D_i$ que $\mathbf{X}$ y 
+cuyas filas son los vectores de salida $\y_1^T,\y_2^T,\dots,\y_m^T$.
 
-Si observamos \eqref{eq:softmax_anm_matriz}, la transformación de $\{\x_m\}$ a $\{\y_m\}$ es fija y no tiene capacidad de aprender a partir de datos pues carece de parámetros. Además, cada \textit{token} $\x_n$ tiene la misma influencia que el resto de \textit{tokens} a la hora de determinar los coeficientes de atención. Lo que nos gustaría es que el modelo  fuese flexible a la hora de determinar qué \textit{tokens} son más parecidos o iguales, en el sentido de que no todos los \textit{tokens} tienen la misma influencia y para ello introduciremos parámetros que el modelo deberá ajustar durante el aprendizaje.
+Si observamos la ecuación \eqref{eq:softmax_anm_matriz}, se 
+aprecia que la transformación de $\{\mathbf{x}_m\}$ a $\{\mathbf{y}_m\}$ es 
+rígida, ya que hemos asumido que las consultas y las claves son valores fijos 
+que no dependen de la entrada $\mathbf{X}$. Bajo esta premisa, cada filósofo 
+aporta siempre el mismo valor independientemente del filósofo, lo que 
+otorga al modelo muy poca flexibilidad para decidir, en función de la 
+situación, a quién debe prestar más atención.  
+Es por ello que nos gustaría que el modelo tuviese capacidad de aprendizaje, 
+es decir, que no se limite a una transformación fija, sino que aprenda a 
+ajustar las representaciones de las consultas, las claves y los valores 
+durante su entrenamiento. Para ello introduciremos hiperparámetros en el cálculo
+de las consultas, las claves y los valores.
 
 \section{Consulta, Clave y Valor}
 
@@ -84,15 +148,18 @@ Como comentábamos al final de la sección anterior, la ecuación \eqref{eq:soft
     \mathbf{\Tilde{X}} = \mathbf{X}\mathbf{\Omega} + \boldsymbol{\beta}
     \label{transformacion_X_matriz_pesos}
 \end{equation}
-donde $\mathbf{\Omega}$ es una matriz de pesos de dimensión $D_i \times D_i$ y $\boldsymbol{\beta}$ son los sesgos, como si de una red neuronal de una sola capa se tratase\footnote{
-La ecuación \eqref{transformacion_X_matriz_pesos} se puede expresar matricialmente como 
+donde $\mathbf{\Omega}$ es una matriz de pesos de dimensión $D_i \times D_i$ 
+y $\boldsymbol{\beta}$ son los sesgos, como si de una red neuronal de una 
+sola capa se tratase\footnote{
+La ecuación \eqref{transformacion_X_matriz_pesos} se puede expresar 
+matricialmente como 
 $\mathbf{\Tilde{X}}= \begin{bmatrix} \mathbf{X} & 1 \end{bmatrix} \begin{bmatrix}
     \mathbf{\Omega} \\ \boldsymbol{\beta}
 \end{bmatrix}$.
-De aquí en adelante y con el fin de aligerar la notación  asumiremos que los sesgos están implícitos en la propia matriz de  pesos $\mathbf{\Omega}$ y \eqref{transformacion_X_matriz_pesos} equilvadrá a $ \mathbf{\Tilde{X}} = \mathbf{X}\mathbf{\Omega}$.
-
-}
-.
+De aquí en adelante y con el fin de aligerar la notación  asumiremos que 
+los sesgos están implícitos en la propia matriz de  pesos 
+$\mathbf{\Omega}$ y \eqref{transformacion_X_matriz_pesos} equilvadrá a 
+$ \mathbf{\Tilde{X}} = \mathbf{X}\mathbf{\Omega}$.}.
 De esta manera, nos interesaría que el modelo fuese capaz de aprender características independientes para la consulta; distintas características para las claves y, también, otras características para los valores. En consecuencia, definiremos 3 matrices de pesos independientes con su correspondiente transformación lineal\footnote{
 Se emplean las letras \textbf{Q}, \textbf{K} y \textbf{V} por su terminología en inglés: \textit{Query} (consulta), \textit{Key} (clave) y \textit{Value} (valor).
 }:
@@ -157,14 +224,23 @@ donde las matrices de consulta, clave y valor son independientes, es decir:
     \mathbf{V}_h = \mathbf{X}\mathbf{\Omega}_{v}^h
     \label{omega_v_h}
 \end{equation}
-para cada $h = 1,2,\dots,H$. Con todo ello, concatenaremos las capas $A_h$ y aplicaremos una transformación lineal mediante una matriz $\mathbf{\Omega_o}$ cuyos elementos se irán ajustando también durante el entrenamiento:
+para cada $h = 1,2,\dots,H$. Con todo ello, concatenaremos las capas 
+$\mathbf{A}_h$ y aplicaremos una transformación lineal mediante una matriz $\mathbf{\Omega_o}$ cuyos elementos se irán ajustando también durante el entrenamiento:
 \begin{equation}
-    \mathbf{Y} = Concatenar [\mathbf{A}_1,\mathbf{A}_2, \dots, \mathbf{A}_H]\mathbf{\Omega_o}
+    \mathbf{Y} = \text{Concatenar} [\mathbf{A}_1,\mathbf{A}_2, \dots, \mathbf{A}_H]\mathbf{\Omega_o}
     \label{multiples_capas}
 \end{equation}
-donde la matriz resultante de concatenar las matrices $A_h$ tiene dimensión \mbox{$N \times H \cdot D_i$} y, en consecuencia, $\mathbf{\Omega_o}$ tiene dimensión $H \cdot D_i \times D_i$ conservando así la dimensión $N \times D_i$ de X.
+donde la matriz resultante de concatenar las matrices $\mathbf{A}_h$ 
+tiene dimensión \mbox{$N \times H \cdot D_i$} y, en consecuencia, $\mathbf{\Omega_o}$ tiene dimensión $H \cdot D_i \times D_i$ conservando así la dimensión $N \times D_i$ de X.
 
-En la práctica,  cada una de estas capas de autoatención $\mathbf{A}_h$, tiene una dimensión inicial $N \times D_a$ donde $D_a = \frac{D_i}{H}$ con el objetivo de que la matriz concatenada tenga dimensión $N \times D_i$ (ver figura \ref{fig:concatenar_matrices}). Además, de esta manera el coste computacional total de evaluar las $H$ capas en paralelo se mantiene aproximadamente igual al coste que tendría evaluar una única capa de atención. Esto evita que el coste de las operaciones matriciales se dispare al utilizar múltiples capas de atención.
+En la práctica,  cada una de estas capas de autoatención $\mathbf{A}_h$, 
+tiene una dimensión inicial $N \times D_a$ donde $D_a = \frac{D_i}{H}$ con 
+el objetivo de que la matriz concatenada tenga dimensión $N \times D_i$ 
+(ver figura \ref{fig:concatenar_matrices}). Además, de esta manera el coste 
+computacional total de evaluar las $H$ capas en paralelo se mantiene 
+aproximadamente igual al coste que tendría evaluar una única capa de atención.
+Esto evita que el coste de las operaciones matriciales se dispare al utilizar 
+múltiples capas.
 
 \begin{figure}[t]
     \vspace{0.8cm}
@@ -184,27 +260,43 @@ La atención múltiple definida en este último apartado es el eje central de la
 
 Para mejorar el entrenamiento y evitar que el gradiente se desvanezca en la profundidad de la red, implementamos una \textit{conexión residual}: una conexión que permite que la información de una capa anterior se salte las operaciones intermedias para sumarse directamente a la salida de estas. Esta suma se puede hacer gracias a que las \textit{capas de autoatención} no modifican la dimensión de la entrada \textbf{X}. Después se aplica una normalización de capas que ayuda a estabilizar y acelerar el aprendizaje:
 \begin{equation}
-    \mathbf{Z} = \textbf{LayerNorm}[\mathbf{Y}[\mathbf{X}]+\mathbf{X}]
+    \mathbf{Z} = \text{LayerNorm}[\mathbf{Y}[\mathbf{X}]+\mathbf{X}]
 \end{equation}
 
 Posteriormente, y con el objetivo de aumentar la no-linealidad del modelo, pasamos \textbf{Z} por una red neuronal $ \y = f[\x,\phi]$ donde $\x,\y \in \mathbb{R}^{D_i}$:
 \begin{equation}
-    \mathbf{\Tilde{X}} = \textbf{LayerNorm}[f[\mathbf{Z},\phi] + \mathbf{Z}]
+    \mathbf{\Tilde{X}} = \text{LayerNorm}[f[\mathbf{Z},\phi] + \mathbf{Z}]
     \label{transformer_ecuacion}
 \end{equation}
 Y esta sería la forma final de un transformador. 
 
-Habitualmente, la arquitectura de estos modelos no se compone de un único bloque, sino que se construye concatenando múltiples transformadores apilados, donde la salida de uno constituye la entrada del siguiente. Desde su introducción original \cite{vaswani2017attention_arxiv}, el modelo fue diseñado expresamente apilando $6$ transformadores idénticoss, pero, aunque estas capas comparten exactamente la misma estructura, cada capa utiliza parámetros, pesos y sesgos completamente independientes que el modelo optimiza de manera individual durante el entrenamiento.
-
-El hecho de que cada capa aprenda parámetros distintos permite que cada nivel se ``especialice'' en un grado de abstracción diferente conforme la información avanza por el modelo. Las primeras capas tienden a enfocarse en relaciones locales y patrones sintácticos básicos, mientras que las capas más profundas utilizan esa base para construir representaciones semánticas globales y complejas. Si todas las capas compartieran los mismos parámetros el modelo se limitaría a aplicar siempre la misma transformación, lo que limitaría  su capacidad de aprendizaje.
-
-El éxito de esta  arquitectura se determinó y verificó de manera empírica. Ya en el artículo origiinal los autores demostraron mediante diversas pruebas que los modelos más grandes y profundos ofrecían una mejor calidad en las tareas de traducción. En la actualidad, esta observación ha evolucionado hasta consolidarse en la denominada hipótesis del escalado (\textit{scaling hypothesis}) \cite{kaplan2020scaling}. Esta hipótesis postula que, al aumentar a gran escala el número de parámetros y capas del modelo, junto a bases de datos enormes, se logran incrementos  en el rendimiento sin necesidad de alterar la arquitectura básica del transformador. Como evidencia empírica contemporánea de este fenómeno, modelos de lenguaje de gran tamaño como GPT-3 han llevado este concepto al extremo, utilizando una pila de 96 transformadores.
 \begin{figure}[t]
     \centering
     \DiagramaTransformer
     \caption{Arquitectura del transformador.}
     \label{fig:diagrama_transformer}
 \end{figure}
+
+Habitualmente, la arquitectura de estos modelos no se compone de un 
+único bloque, sino que se construye concatenando múltiples transformadores 
+apilados, donde la salida de uno constituye la entrada del siguiente. 
+Desde su introducción original \cite{vaswani2017attention_arxiv}, el modelo 
+fue diseñado expresamente apilando $6$ transformadores idénticoss, pero 
+aunque estas capas comparten exactamente la misma estructura, cada capa utiliza parámetros, pesos y sesgos completamente independientes que el modelo optimiza de manera individual durante el entrenamiento.
+
+El hecho de que cada capa aprenda parámetros distintos permite que cada nivel se ``especialice'' en un grado de abstracción diferente conforme la información avanza por el modelo. Las primeras capas tienden a enfocarse en relaciones locales y patrones sintácticos básicos, mientras que las capas más profundas utilizan esa base para construir representaciones semánticas globales y complejas. Si todas las capas compartieran los mismos parámetros el modelo se limitaría a aplicar siempre la misma transformación, lo que limitaría  su capacidad de aprendizaje.
+
+El éxito de esta  arquitectura se determinó y verificó de manera empírica. 
+Ya en el artículo original los autores demostraron mediante diversas 
+pruebas que los modelos más grandes y profundos ofrecían una mejor calidad 
+en las tareas de traducción. En la actualidad, esta observación ha 
+evolucionado hasta consolidarse en la denominada hipótesis del escalado 
+(\textit{scaling hypothesis}) \cite{kaplan2020scaling}. Esta hipótesis 
+postula que, al aumentar a gran escala el número de parámetros y capas 
+del modelo, junto a bases de datos enormes, se logran incrementos  en el 
+rendimiento sin necesidad de alterar la arquitectura básica del transformador.
+Como evidencia empírica contemporánea de este fenómeno, modelos de lenguaje de gran tamaño como GPT-3 han llevado este concepto al extremo, utilizando una pila de 96 transformadores.
+
 
 
 
