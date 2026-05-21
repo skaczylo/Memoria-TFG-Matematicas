@@ -5,7 +5,13 @@ Tras explorar en el capítulo anterior la arquitectura del transformador y su me
 
 Sin embargo, el verdadero punto de inflexión llegó de la mano de OpenIA en su influyente artículo \textit{Scaling Laws for Neural Lenguage Models} \cite{kaplan2020scaling}, donde demostraron empíricamente que el rendimiento de los modelos de lenguaje mejoraban según aumentaban el tamaño de la red, la capacidad de cómputo y, sobre todo, el volumen de los datos. Al llevar este escalado a niveles masivos, nacieron los \textit{Large Lenguage Models} (LLMs) o, en español, los modelos extensos de lenguaje. Gracias a este crecimiento, se observó que redes entrenadas únicamente para predecir la siguiente palabra desarrollaron una profunda ``comprensión'' de la sintaxis y la semántica y dejaron de ser sistemas especializados en una tarea para convertirse en herramientas de propósito general, capaces de traducir, resumir o razonar con apenas unas instrucciones (los famosos \textit{prompts)}.
 
-Con todo ello, resulta fundamental entender qué ocurre exactamente en el interior de estos modelos extensos del lenguaje y cómo se utilizan según el problema que queramos resolver. En este capítulo explicaremos en detalle cómo se procesa el lenguaje natural dentro de los LLMs; abordaremos cómo se transforma el texto bruto en vectores mediante la tokenización y los \textit{embeddings}, y analizaremos varias  estructura de los transformadores, entre ellas, las estructuras autoregresivas que impulsan la actual inteligencia artificial generativa.
+Con todo ello, resulta fundamental entender qué ocurre exactamente en el interior de 
+estos modelos extensos del lenguaje y cómo se utilizan según el problema que 
+queramos resolver. En este capítulo explicaremos en detalle cómo se procesa el 
+lenguaje natural dentro de los LLMs; abordaremos cómo se transforma el texto bruto 
+en vectores mediante la tokenización y los \textit{embeddings}, y analizaremos varias  
+estructura de los transformadores, entre ellas, las estructuras autorregresivas que 
+impulsan la actual inteligencia artificial generativa.
 
 
 %==========================================
@@ -15,14 +21,38 @@ Con todo ello, resulta fundamental entender qué ocurre exactamente en el interi
 
 El primer paso en el procesamiento del lenguaje es transformar el texto en bruto en un formato estructurado que el modelo pueda interpretar. Para ello, es necesario definir un \textbf{vocabulario}: un conjunto finito de unidades básicas de texto que el modelo es capaz de reconocer y procesar.
 
-Una primera aproximación para definir este vocabulario consistiría en utilizar únicamente caracteres individuales: letras, números y signos de puntuación. Sin embargo, este enfoque presenta desventajas significativas pues aislar los caracteres destruye la semántica del lenguaje y dificulta la comprensión real del texto, por no mencionar que genera secuencias de entrada excesivamente largas (por ejemplo, este pequeño párrafo contiene ya $439$ caracteres). Otra aproximación sería considerar un diccionario literal compuesto exclusivamente por palabras enteras. No obstante, este método es poco flexible, pues si el modelo recibiese una palabra que no está en su vocabulario, como un nombre propio o un error ortográfico, el modelo sería incapaz de procesarlo.
+Una primera aproximación para definir este vocabulario consistiría en utilizar 
+únicamente caracteres individuales: letras, números y signos de puntuación. 
+Sin embargo, este enfoque presenta desventajas significativas pues aislar los 
+caracteres destruye la semántica del lenguaje y dificulta la comprensión real del 
+texto, por no mencionar que genera secuencias de entrada excesivamente largas 
+(por ejemplo, este pequeño párrafo contiene ya $439$ caracteres). Otra aproximación 
+sería considerar un diccionario literal compuesto exclusivamente por palabras enteras. 
+No obstante, este método es poco flexible, pues si el modelo recibiese una palabra 
+que no está en su vocabulario, como un nombre propio o un error ortográfico, el 
+modelo sería incapaz de procesarlo.
 
-Para resolver esta dicotomía, se emplea el proceso de \textbf{tokenización}. Este método busca un equilibrio dividiendo el texto de entrada en unidades más pequeñas llamadas \tokens{}, que formarán el vocabulario y serán lo que realmente reciba y procese el transformador como entrada. Estos \tokens{} pueden ser palabras enteras que suelen aparecer con mucha frecuencia, caracteres individuales o fragmentos de palabras (raíces o terminaciones).
-Para  entender las ventajas de usar \tokens{} consideremos las palabras \textit{cocinar}, \textit{cocinado}, \textit{cocinero} y \textit{cocina}. Todas ellas comparten la misma raíz \textit{cocin-}. Mediante la tokenización, resulta mucho más práctico considerar \textit{cocin-} como un \token{} independiente perteneciente al vocabulario y, de este modo, interpretar el resto de palabras como la concatenación de dicha raíz con sus correspondientes sufijos que, a su vez, serán \tokens{} independientes o concatenaciones de otros \tokens{}.
+Para resolver esta dicotomía, se emplea el proceso de \textbf{tokenización}. 
+Este método busca un equilibrio dividiendo el texto de entrada en unidades más pequeñas
+llamadas \tokens{}, que formarán el vocabulario y serán lo que realmente reciba y 
+procese el transformador como entrada. Estos \tokens{} pueden ser palabras enteras que 
+suelen aparecer con mucha frecuencia, caracteres individuales o fragmentos de 
+palabras (raíces o terminaciones).
+Para  entender las ventajas de usar \tokens{} consideremos las palabras 
+\textit{cocinar}, \textit{cocinado}, \textit{cocinero} y \textit{cocina}. 
+Todas ellas comparten la misma raíz \textit{cocin-}. Mediante la tokenización, 
+resulta mucho más práctico considerar \textit{cocin-} como un \token{} independiente 
+perteneciente al vocabulario y, de este modo, interpretar el resto de palabras como 
+la concatenación de dicha raíz con sus correspondientes sufijos que, a su vez, 
+serán \tokens{} independientes o concatenaciones de otros \tokens{}.
 
-Este proceso de tokenización otorga al modelo la flexibilidad deseada pues en lugar de fallar ante palabras nuevas o desconocidas, el modelo los divide en \tokens{} que sí pertenecen a su vocabulario y que, en consecuencia, sí es capaz de procesar. 
+Este proceso de tokenización otorga al modelo la flexibilidad deseada pues en 
+lugar de fallar ante palabras nuevas o desconocidas, el modelo los divide en \tokens{} 
+que sí pertenecen a su vocabulario y que, en consecuencia, sí es capaz de procesar. 
 
-Surge entonces la cuestión fundamental de cómo se definen y obtienen dichos \tokens{}. Existen varios métodos, pero el más famoso y el más utilizado es mediante el algoritmo de \textbf{Codificación de Pares de Bytes} (\textit{Byte Pair Encoding}): 
+Surge entonces la cuestión fundamental de cómo se definen y obtienen dichos \tokens{}. 
+Existen varios métodos, pero el más famoso y el más utilizado es mediante el algoritmo 
+de \textbf{Codificación de Pares de Bytes} (\textit{Byte Pair Encoding}): 
 
 \begin{algorithm*}
     \caption{Algoritmo de codificación de pares de bytes (BPE)}
@@ -41,11 +71,30 @@ Surge entonces la cuestión fundamental de cómo se definen y obtienen dichos \t
     \State \Return $\mathcal{V}$
     \end{algorithmic}
 \end{algorithm*}
-La idea del algoritmo es la siguiente: partimos de un texto $\mathcal{S}$ y un valor $k$ que representará el tamaño de nuestro vocabulario $\mathcal{V}$, donde los \tokens{} iniciales que componen $\mathcal{V}$ son todos los caracteres distintos que aparecen en $\mathcal{S}$. En cada iteración, el algoritmo busca el par de \tokens{} consecutivos que aparece con mayor frecuencia y acto seguido los fusiona para crear un \token{} nuevo que se añade al vocabulario y actualiza el texto original reemplazando el par separado con el nuevo \token{}. Este proceso se repite sucesivamente durante $k$ iteraciones (ver \ref{fig:bpe}).
+La idea del algoritmo es la siguiente: partimos de un texto $\mathcal{S}$ y 
+un valor $k$ que representará el tamaño de nuestro vocabulario $\mathcal{V}$, 
+donde los \tokens{} iniciales que componen $\mathcal{V}$ son todos los caracteres 
+distintos que aparecen en $\mathcal{S}$. En cada iteración, el algoritmo busca el 
+par de \tokens{} consecutivos que aparece con mayor frecuencia y acto seguido los 
+fusiona para crear un \token{} nuevo que se añade al vocabulario y actualiza el texto 
+original reemplazando el par separado con el nuevo \token{}. Este proceso se repite 
+sucesivamente durante $k$ iteraciones (ver figura \ref{fig:bpe}).
 
-Observamos que este algoritmo depende mucho del texto de entrada $\mathcal{S}$, por lo que es imprescindible partir de un corpus de entrenamiento masivo que represente el dominio sobre el que operará el modelo. Por ejemplo, si el objetivo es desarrollar un sistema especializado en derecho, resulta útil que el corpus este compuesto por la mayor cantidad de textos jurídicos. De este modo, el algoritmo aprenderá a agrupar los caracteres en raíces y terminaciones más frecuentes de dicha jerga.
+Observamos que este algoritmo depende mucho del texto de entrada $\mathcal{S}$, 
+por lo que es imprescindible partir de un corpus de entrenamiento masivo que 
+represente el dominio sobre el que operará el modelo. Por ejemplo, si el objetivo es 
+desarrollar un sistema especializado en derecho, resulta útil que el corpus esté 
+compuesto por la mayor cantidad de textos jurídicos. De este modo, el algoritmo 
+aprenderá a agrupar los caracteres en raíces y terminaciones más frecuentes de dicha 
+jerga.
 
-En la práctica el vocabulario $\mathcal{V}$ es un diccionario clave-valor donde cada \token{} tiene asociado un identificador numérico único. Además, es muy importante tener en cuenta que  el carácter que representa el espacio en blanco no se omite, sino que se incluye en $\mathcal{V}$ como un \token inicial. De esta manera el modelo puede aprender a distinguir si una secuencia de caracteres forma una palabra independiente o si es un fragmento. Generalmente, el espacio en blanco suele estar concatenado al inicio de ciertos \tokens{} (ver \ref{fig:tokenizadores}).
+En la práctica el vocabulario $\mathcal{V}$ es un diccionario clave-valor donde 
+cada \token{} tiene asociado un identificador numérico único. Además, es muy 
+importante tener en cuenta que  el carácter que representa el espacio en blanco no 
+se omite, sino que se incluye en $\mathcal{V}$ como un \token inicial. De esta manera 
+el modelo puede aprender a distinguir si una secuencia de caracteres forma una palabra 
+independiente o si es un fragmento. Generalmente, el espacio en blanco suele estar 
+concatenado al inicio de ciertos \tokens{} (ver figura \ref{fig:tokenizadores}).
 
 
 \begin{figure}[t]
@@ -87,35 +136,57 @@ Una vez definido el vocabulario y comprendido el proceso de tokenización, el si
 $\x_n^T = ( \x_{n1}, \x_{n2}, \dots,\x_{nD_i})$
 a los que también llamábamos \tokens{}. Con todo ello, es necesario realizar una transformación que asigne a  un identificador un vector.
 
-Supongamos entonces un vocabulario $\mathcal{V}$ de cardinal $k$. Definiremos una matriz $\textbf{E}$, denominada matriz de \textit{embedding}, de dimensión $D_i \times k$. 
-Además, cada \token{} de $\mathcal{V}$ será representado mediante un vector $t_n^T$ =  $(0, \dots,1, \dots,0) \in \mathbb{R}^k$ formado por $0$'s salvo la posición $n$-ésima donde vale $1$ y  representará el \token{} $n$-ésimo. Finalmente, realizamos la siguiente transformación lineal:
+Supongamos entonces un vocabulario $\mathcal{V}$ de cardinal $k$. 
+Definiremos una matriz $\textbf{E}$, denominada matriz de \textit{embedding}, 
+de dimensión $D_i \times k$. 
+Además, cada \token{} de $\mathcal{V}$ será representado mediante un 
+vector $t_n^T$ =  $(0, \dots,1, \dots,0) \in \mathbb{R}^k$ formado por $0$'s salvo 
+la posición $n$-ésima donde vale $1$ y  representará el \token{} $n$-ésimo. 
+Finalmente, realizamos la siguiente transformación lineal:
 \begin{equation}
     \x_n = \textbf{E} t_n \in \mathbb{R}^{D_i}
     \label{token}
 \end{equation}
-donde $x_n$ es el \token{}  $n$-ésimo que procesará el transformador y al que hacíamos referencia en la sección \ref{procesamiento}.
+donde $\x_n$ es el \token{}  $n$-ésimo que procesará el transformador y al que 
+hacíamos referencia en la sección \ref{procesamiento}.
 
-Cabe señalar que representar los \tokens{} de $\mathcal{V}$ solo con vectores de la base canónica no es práctico, pues, por lo general, $\mathcal{V}$  suele estar compuesto por cientos de miles de \tokens{} y los vectores $t_n$ serían dimensionalmente muy grandes. Además, lo habitual es considerar $D_i \leq k$, reduciendo así la dimensión de $\x_n$. Por otro lado, los vectores canónicos no capturan ningún tipo significado o semántica y mucho menos relaciones entre \tokens{}, ya que se trata de vectores ortogonales entre sí. En consecuencia, la matriz $\mathbf{E}$ se define como una matriz de parámetros entrenables y cuyos pesos se van ajustando durante el entrenamiento junto al transformador. De aquí en adelante cuando hagamos referencia a los \tokens{} pensaremos siempre en  \eqref{token}.
+Cabe señalar que representar los \tokens{} de $\mathcal{V}$ solo con vectores de la 
+base canónica no es práctico, pues, por lo general, $\mathcal{V}$  suele estar 
+compuesto por cientos de miles de \tokens{} y los vectores $t_n$ serían 
+dimensionalmente muy grandes. Además, lo habitual es considerar $D_i \leq k$, 
+reduciendo así la dimensión de $\x_n$. Por otro lado, los vectores canónicos no 
+capturan ningún tipo significado o semántica y mucho menos relaciones entre \tokens{}, 
+ya que se trata de vectores ortogonales entre sí. En consecuencia, 
+la matriz $\mathbf{E}$ se define como una matriz de parámetros entrenables y cuyos 
+pesos se van ajustando durante el entrenamiento junto al transformador. 
+De aquí en adelante cuando hagamos referencia a los \tokens{} pensaremos siempre 
+en  \eqref{token}.
 \begin{figure}[t]
     \centering
     \embeddingflujo
     \caption{Procesamiento del texto hasta llegar al transformador.}
     \label{fig:embeddingflujo}
 \end{figure}
-
-
-
 %==========================================
 %transformadorES
 %==========================================
-\section{transformadores}
+\section{Transformadores}
 Hasta ahora hemos visto cómo la información se procesa y convierte en vectores de $\mathbb{R}^{D_i}$  para que el transformador sea capaz de asimilarla e interpretarla y, sobre todo, comprendemos la arquitectura general del transformador. En consecuencia, en esta sección abordaremos cómo se adapta la arquitectura y tratamos esa información preprocesada dependiendo de la tarea específica que queramos resolver. Para ello, estudiaremos tres variantes principales: codificador (\textit{encoder}), decodificador (\textit{decoder}) y codificador-decodificador (\textit{encoder-decoder}).
 
 El codificador (\textit{encoder}) procesa la secuencia de entrada en su totalidad para extraer una representación interna de alta dimensionalidad y actúa como un extractor de características diseñado para clasificar o analizar texto, tales como el análisis de sentimientos o el reconocimiento de entidades.
 
 Por otro lado, el decodificador (\textit{decoder}) es un modelo puramente generativo cuya finalidad es la construcción de nuevas secuencias de forma autorregresiva. Para garantizar un aprendizaje coherente, esta variante emplea un mecanismo de atención enmascarada que impide al modelo acceder a información de posiciones futuras. De este modo, la predicción de cada nuevo elemento se realiza basándose exclusivamente en los tokens generados con anterioridad. 
 
-Finalmente, la arquitectura  codificador-decodificador (\textit{encoder-decoder}) es una estructura híbdrida de las anteriores concebida específicamente para problemas de secuencia a secuencia. En este esquema, el proceso se divide en dos fases complementarias: mientras el codificador genera una representación matemática global de la entrada, el decodificador produce la salida apoyándose no solo en su propio entrada, sino también en la información estructurada que le transfiere el codificador a través del mecanismo de atención cruzada (\textit{cross-attention}). Esta interconexión es la que permite resolver con éxito tareas de alta complejidad donde el significado debe preservarse íntegramente entre distintos dominios, siendo la traducción automática de idiomas el ejemplo más representativo de su aplicación.
+Finalmente, la arquitectura  codificador-decodificador (\textit{encoder-decoder}) 
+es una estructura híbdrida de las anteriores concebida específicamente para 
+problemas de secuencia a secuencia. En este esquema, el proceso se divide en dos 
+fases complementarias: mientras el codificador genera una representación matemática 
+global de la entrada, el decodificador produce la salida apoyándose no solo en su 
+propia entrada, sino también en la información estructurada que le transfiere el 
+codificador a través del mecanismo de atención cruzada (\textit{cross-attention}).
+Esta interconexión es la que permite resolver con éxito tareas de alta complejidad 
+donde el significado debe preservarse íntegramente entre distintos dominios, siendo 
+la traducción automática de idiomas el ejemplo más representativo de su aplicación.
 
 %==========================================
 %DECODERS
@@ -123,7 +194,11 @@ Finalmente, la arquitectura  codificador-decodificador (\textit{encoder-decoder}
 
 \subsection{Decodificador}
 
-Los decodificadores son un tipo de arquitectura cuyo propósito principal es funcionar como modelos generativos para crear o generar secuencias de \tokens{}. Pertenecen a la familia de los denominados \textit{modelos autorregresivos}: modelos probabilísticos diseñados para procesar datos secuenciales, donde la probabilidad de que aparezca un elemento en la secuencia depende de los elementos que lo precedieron.
+Los decodificadores son un tipo de arquitectura cuyo propósito principal es 
+funcionar como modelos generativos para crear o generar secuencias de \tokens{}. 
+Pertenecen a la familia de los denominados \textit{modelos autorregresivos}: modelos 
+probabilísticos diseñados para procesar datos secuenciales, donde la probabilidad de 
+que aparezca un elemento en la secuencia depende de los elementos que lo precedieron.
 
 \subsubsection{Probabilidad Condicionada}
 El objetivo principal de un modelo autoregresivo es, dada una secuencia de \tokens{}
@@ -133,13 +208,35 @@ $\x_1, \dots, \x_n$, calcular la probabilidad conjunta $p(\x_1, \dots, \x_n)$. E
 \end{equation}
 Por lo tanto, calcular la probabilidad conjunta de toda la secuencia se traduce en calcular las correspondientes probabilidades condicionadas. Y esta es exactamente la tarea fundamental que realizan los modelos autorregresivos y, en nuestro caso, el decodificador.
 
-A nivel interno, sabemos que la arquitectura del transformador transforma una secuencia de \tokens{} $\x_1, \dots, \x_N$ en otra secuencia $\widetilde{\x}_1, \dots, \widetilde{\x}_N$ de la misma dimensión $D_i$. Sin embargo, nosotros queremos que el decodificador produzca como salida una distribución de probabilidad sobre un vocabulario $\mathcal{V}$ de tamaño $k$, la cual determine qué probabilidad tiene cada \token{} del vocabulario  de ser el siguiente en la secuencia ($\x_1, \dots, \x_n$). Para lograr esto, realizaremos una transformación lineal usando una matriz de pesos $\Omega_o$ de dimensión $D_i \times k$, seguida de la función Softmax:
+Nuestro objetivo es, por tanto, adaptar la salida del transformador para que 
+funcione como un modelo autorregresivo. En otras palabras, buscamos traducir 
+su salida a una distribución de probabilidades sobre un 
+vocabulario $\mathcal{V}$. 
+Para ello, recordemos que a nivel interno el transformador mapea una secuencia 
+de \tokens{} $\x_1, \dots, \x_n$ en una secuencia de  vectores 
+$\widetilde{\x}_1, \dots, \widetilde{\x}_n$ de dimensión $D_i$. Sin embargo, 
+para que el decodificador pueda predecir el siguiente elemento, necesitamos que 
+su salida sea una distribución sobre un vocabulario $\mathcal{V}$ de tamaño $k$, 
+la cual determine la probabilidad que tiene cada \token{} de continuar la 
+secuencia, es decir, necesitamos modificar la salida del transformador  en una
+distribución de probabilidad. 
+Para lograr esto, realizaremos una transformación lineal utilizando una matriz de 
+pesos $\mathbf{\Omega}_o$ de 
+dimensión $D_i \times k$, seguida de la función de activación Softmax:
 \begin{equation}
-    \mathbf{Y} = \text{SoftMax}[\widetilde{\mathbf{X}}\mathbf{\Omega_o}]
+    \mathbf{Y} = \text{Softmax}[\widetilde{\mathbf{X}}\mathbf{\Omega}_o]
 \end{equation}
-donde $\mathbf{Y}$ tiene dimensión $N \times k$ y $\widetilde{\mathbf{X}}$ es la matriz cuyas filas son $\widetilde{\x}_1^T, \dots, \widetilde{\x}_N^T$.
-La fila $j$-ésima $\y_j^T$ de $\mathbf{Y}$ representa la distribución de probabilidades sobre
-$\mathcal{V}$ condicionada por los \tokens{} $\x_1, \dots, \x_j$ con $j \leq n$:
+donde $\mathbf{Y}$ tiene dimensión $n \times k$ y $\widetilde{\mathbf{X}}$ es 
+la matriz cuyas filas son la salida $\widetilde{\x}_1^T, \dots, \widetilde{\x}_n^T$
+del transformador. 
+Al aplicar la función Softmax, garantizamos que cada una de las filas $\y_j^T$ 
+contenga elementos comprendidos entre 0 y 1, y que su suma total sea 
+exactamente uno. Dicho de otra manera, cada fila se transforma en una distribución 
+de probabilidad válida. 
+Por lo tanto, la fila $j$-ésima $\y_j^T$ de $\mathbf{Y}$ representa la 
+distribución de probabilidades sobre el vocabulario $\mathcal{V}$ para predecir 
+el siguiente \token{}, condicionada por la subsecuencia de 
+\tokens{} procesada hasta ese momento $\x_1, \dots, \x_j$ (con $j \leq n$):
 \begin{equation*}
 \resizebox{\textwidth}{!}{%
 $\mathbf{Y} =
@@ -151,36 +248,40 @@ p(\x_{n+1} = v_1 \mid \x_1, \dots, \x_n) & p(\x_{n+1} = v_2 \mid \x_1, \dots, \x
 \end{pmatrix}$%
 }
 \end{equation*}
+donde $\x_{n+1}$ representa la predicción del siguiente \token a toda la secuencia 
+$(\x_1, \dots, \x_n)$.
 
+Sin embargo, si observamos detenidamente la matriz $\mathbf{Y}$ y recordamos 
+cómo funciona el proceso de autoatención, nos damos cuenta de un problema 
+estructural: no podemos asegurar que las probabilidades condicionadas dependan 
+exclusivamente de los \tokens{} procesados hasta la posición $j$. 
+Dado que la atención procesa toda la secuencia en paralelo y atiende a todos los 
+elementos simultáneamente, al calcular la salida $\widetilde{\x}_j$, el modelo 
+tendría acceso a la información de los \tokens{} futuros ($\x_{j+1}, \dots, \x_n$).
+Si entrenásemos al modelo así, simplemente aprendería a hacer trampas: 
+``miraría'' el texto adelantado y copiaría la respuesta en lugar de aprender a 
+predecirla.
+Para evitar esto y garantizar que la arquitectura funcione correctamente como 
+un modelo autorregresivo, es necesario introducir una modificación en el proceso: 
+la autoatención enmascarada (\textit{masked self-attention}).
 
-\subsubsection{Muestreo}
-Una vez calculada la distribución de probabilidades para el siguiente \token{}, necesitamos una estrategia para elegir cuál será el que extienda la secuencia. La opción más sencilla consiste en elegir siempre el \token{} con la probabilidad más alta, pero esto convierte el modelo en un sistema determinista y no nos asegura que la secuencia completa generada sea globalmente la más probable. Otra opción sería elegir el siguiente \token{} aleatoriamente, lo cual queda completamente descartado ya que el modelo  generaría resultados sin sentido. 
-
-Lo ideal para encontrar la secuencia más probable sería aquella que hiciese máxima la probabilidad conjunta de toda la frase:
-\begin{equation}
-    p(\y_1, \dots, \y_N) = \prod_{n=1}^{N} p(\y_n \mid \y_1, \dots, \y_{n-1})
-\end{equation}
-Sin embargo, esto es computacionalmente muy costoso, del orden $\mathcal{O}$($k^N$) donde, recordemos, $k$ es el tamaño del vocabulario $\mathcal{V}$. Existen entonces varios métodos de muestreo de los cuales explicaremos los dos más usados: muestreo Top-$K$ y muestreo Top-$p$. 
-
-El primero, muestreo Top-$K$, ordena todos los \tokens{} del vocabulario de mayor a menor probabilidad y se queda únicamente con los ${K}$ \tokens{} más probables. Después, las probabilidades de estos ${K}$ \tokens{} se normalizan para que sumen $1$ y se elige el siguiente realizando un muestreo aleatorio sobre este subconjunto.
-Una de las principales desventajas de este método es que ${K}$ es fijo y puede haber situaciones en las que el modelo esté obligado a añadir al subconjunto \tokens{} muy poco probables.
-
-El segundo método, muestreo Top-$p$, soluciona el problema del ${K}$ fijo y elige dinámicamente la cantidad de \tokens{} que se consideran en cada iteración. La idea principal de Top-$p$ es seleccionar en cada paso el conjunto más pequeño de \tokens más probables cuya probabilidad total sea mayor o igual al umbral especificado $p$. Este conjunto se llamará el núcleo $\mathcal{V}^p$ y  matemáticamente se define como :
-
-\begin{equation}
-    \sum_{x \in V^{p}} P(x \mid x_{1:i-1}) \geq p \quad \text{y} \quad \forall S \subset V^{p}, \, \sum_{x \in S} P(x \mid x_{1:i-1}) < p
-\end{equation}
-Aunque una formulación equivalente es ordenar los \tokens en orden descendente  y añadir al núcleo aquellos cuya masa acumulada sea mayor o igual que $p$.
 
 \subsubsection{Autoatención Enmascarada}
+Para garantizar matemáticamente que cada fila $j$ de la matriz $\mathbf{Y}$ 
+represente una verdadera distribución condicionada de manera exclusiva a los 
+\tokens{} previos, debemos impedir que el \token{} $\x_j$ ``mire hacia el futuro''.
+Queremos asegurar que, al procesar la secuencia, un \token{} en la posición $j$ 
+solo calcule su atención basándose única y exclusivamente en sí mismo y en 
+los \tokens{} que lo preceden, ignorando por completo la posición $j+1$ y 
+posteriores. Dado que los \tokens{} fluyen de manera independiente por el 
+transformador y el único punto donde intercambian información es durante el 
+cálculo de los coeficientes de atención ($\mathbf{Q} \mathbf{K}^T$), 
+es precisamente en esta operación donde debemos intervenir.
 
-Hasta el momento, no se ha profundizado en el proceso de entrenamiento de estos modelos. Sin embargo, en el caso del decodificador resulta interesante comprender cómo se lleva a cabo este procedimiento. El entrenamiento de esta arquitectura se basa en un enfoque de aprendizaje autosupervisado ya que el modelo extrae las etiquetas de salida automáticamente a partir de los propios datos de entrada sin necesidad de intervención\footnote{
-Tradicionalmente, se distinguen tres tipos: el \textbf{supervisado} (usa datos etiquetados por humanos), el \textbf{no supervisado} (busca patrones sin etiquetas) y el \textbf{aprendizaje por refuerzo} (basado en prueba y error con recompensas). El enfoque \textbf{autosupervisado} es una evolución donde el modelo actúa como su propio ``tutor'' al ocultar partes del dato para intentar predecirlas
-}. A modo de ejemplo, y suponiendo que los \tokens{} son palabras enteras, dada una frase como ``El gato está sobre la mesa'', el objetivo del modelo es  siempre predecir el siguiente \token{}  basándose únicamente en los \tokens{} anteriores. Inicialmente se indica al modelo que genere una predicción inicial que se compara posteriormente con el primer \token{} correcto ``El''. A partir del error cometido, se ajustan los pesos de la red mediante el descenso del gradiente y la retropropagación. En la siguiente iteración, se introduce el \token{} correcto ``El'' para que el modelo intente predecir el segundo \token{} ``gato'', y así sucesivamente.
-
-No obstante, este proceso secuencial a grande escala resulta ineficiente y nos interesaría que el modelo procesase la frase entera de un solo vistazo, pero esto plantea un problema arquitectónico pues al procesar la frase entera el mecanismo de autoatención prestaría atención a todos los \tokens{}. Esto implica que, al intentar predecir el \token{} en la posición $n+1$, el modelo tendría acceso a la información de dicho \token{} y, además, a los posteriores.
-
-Nuestro objetivo es entonces asegurar que  los primeros $n$ \tokens{} solo calculen su atención basándose única y exclusivamente en ellos mismos y los \tokens{} que los preceden, y, obviamente, sin conocer el \token{} de la posición $n+1$ y los posteriores. Para resolver este problema modificaremos solo el mecanismo de autoatención, pues los \tokens{} se procesan de manera independiente en el transformador excepto durante el cálculo de la atención $\mathbf{Q}  \mathbf{K}^T$. Se introduce entonces una matriz de enmascaramiento, denotada como $\mathbf{M}$, de dimensión $N \times N$, donde $ N$ representaba el número de \tokens{} que recibía el transformador como entrada. Esta matriz presenta la siguiente estructura:
+Se introduce entonces una matriz de enmascaramiento, denotada como $\mathbf{M}$, 
+de dimensión $N \times N$, donde $ N$ representaba el número de \tokens{} que 
+recibía el transformador como entrada. Esta matriz presenta la siguiente 
+estructura:
 \begin{equation*}
     \mathbf{M} = \begin{pmatrix} 
 0 & -\infty & -\infty & \cdots & -\infty \\ 
@@ -190,8 +291,7 @@ Nuestro objetivo es entonces asegurar que  los primeros $n$ \tokens{} solo calcu
 0 & 0 & 0 & \cdots & 0 
 \end{pmatrix}
 \end{equation*}
-
-Esta matriz se suma a la atención calculada justo antes de aplicar la función Softmax:
+La matriz $\mathbf{M}$ se suma a la atención calculada justo antes de aplicar la función Softmax:
 $$\text{Softmax}\left[ \mathbf{Q} \mathbf{K}^T + \mathbf{M} \right]$$
 Al realizar esta operación, observamos que las posiciones correspondientes a \tokens{} futuros (la triangular superior) adquieren un valor $-\infty$ y, tras la función Softmax, dichas posiciones se anulan por completo. De esta manera la matriz con los coeficientes de atención $a_{nm}$ resulta en:
 \[
@@ -207,7 +307,10 @@ a_{N1} & a_{N2} & a_{N3} & \cdots & a_{NN}
 \end{pmatrix}
 \end{array}
 \]
-El \token{} $\x_1$ solo presta atención a sí mismo, mientras que el segundo \token{} $\x_2$ solo presta atención a sí mismo y a $\x_1$. Finalmente, añadiendo $\mathbf{M}$ a (\ref{eq:eq_transformer}), obtenemos un nuevo tipo de autoatención enmascarada (\textit{causal attention)}:
+El \token{} $\x_1$ solo presta atención a sí mismo, mientras que el segundo 
+\token{} $\x_2$ solo presta atención a sí mismo y a $\x_1$. 
+Finalmente, añadiendo $\mathbf{M}$ a (\ref{eq:eq_transformer}), 
+obtenemos un nuevo tipo de autoatención enmascarada:
 \begin{equation}
     \mathbf{Y} = \text{Softmax}[\mathbf{Q}  \mathbf{K}^T + \mathbf{M}]\mathbf{V}
     \label{eq:eq_transformer_mascara}
@@ -227,6 +330,46 @@ El \token{} $\x_1$ solo presta atención a sí mismo, mientras que el segundo \t
 \end{figure}
 
 
+
+\subsubsection{Muestreo}
+Una vez calculada la distribución de probabilidades para el siguiente \token{}, 
+necesitamos una estrategia para elegir cuál será el que extienda la secuencia. 
+La opción más sencilla consiste en elegir siempre el \token{} con la probabilidad 
+más alta, pero esto convierte el modelo en un sistema determinista y no nos 
+asegura que la secuencia completa generada sea globalmente la más probable. 
+Otra opción sería elegir el siguiente \token{} aleatoriamente, lo cual queda 
+completamente descartado ya que el modelo  generaría resultados sin sentido. 
+
+Lo ideal para encontrar la secuencia más probable sería aquella que hiciese máxima 
+la probabilidad conjunta de toda la frase:
+\begin{equation}
+    p(\y_1, \dots, \y_N) = \prod_{n=1}^{N} p(\y_n \mid \y_1, \dots, \y_{n-1})
+\end{equation}
+Sin embargo, esto es computacionalmente muy costoso, del orden 
+$\mathcal{O}$($k^N$) donde, recordemos, $k$ es el tamaño del vocabulario 
+$\mathcal{V}$. Existen entonces varios métodos de muestreo de los cuales 
+explicaremos los dos más usados: muestreo Top-$K$ y muestreo Top-$p$. 
+
+El primero, muestreo Top-$K$, ordena todos los \tokens{} del vocabulario de mayor 
+a menor probabilidad y se queda únicamente con los ${K}$ \tokens{} más probables. 
+Después, las probabilidades de estos ${K}$ \tokens{} se normalizan para que 
+sumen $1$ y se elige el siguiente realizando un muestreo aleatorio sobre este 
+subconjunto.
+Una de las principales desventajas de este método es que ${K}$ es fijo y puede 
+haber situaciones en las que el modelo esté obligado a añadir al subconjunto 
+\tokens{} muy poco probables.
+
+El segundo método, muestreo Top-$p$, soluciona el problema del ${K}$ fijo y elige 
+dinámicamente la cantidad de \tokens{} que se consideran en cada iteración. 
+La idea principal de Top-$p$ es seleccionar en cada paso el conjunto más pequeño 
+de \tokens más probables cuya probabilidad total sea mayor o igual al umbral 
+especificado $p$. Este conjunto se llamará el núcleo $\mathcal{V}^p$ y  
+matemáticamente se define como :
+
+\begin{equation}
+    \sum_{x \in V^{p}} P(x \mid x_{1:i-1}) \geq p \quad \text{y} \quad \forall S \subset V^{p}, \, \sum_{x \in S} P(x \mid x_{1:i-1}) < p
+\end{equation}
+Aunque una formulación equivalente es ordenar los \tokens en orden descendente  y añadir al núcleo aquellos cuya masa acumulada sea mayor o igual que $p$.
 %==========================================
 %ENCODERS
 %==========================================
