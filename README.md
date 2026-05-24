@@ -1,6 +1,6 @@
-# Memoria TFG — Matemáticas: Los Transformadores
+# Memoria TFG — Matemáticas: El transformador
 
-Este repositorio contiene la memoria del Trabajo de Fin de Grado en Matemáticas, cuyo objetivo es construir una comprensión rigurosa y completa de los transformadores, la arquitectura que revolucionó la inteligencia artificial moderna.
+Este repositorio contiene la memoria del Trabajo de Fin de Grado en Matemáticas, cuyo objetivo es construir una comprensión rigurosa y completa del  transformador: la arquitectura que revolucionó la inteligencia artificial moderna.
 
 ## Sobre el trabajo
 
